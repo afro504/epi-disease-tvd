@@ -1,0 +1,800 @@
+---
+title: "`r paste('Fact Sheet:', input$disease_fsheet, '-',input$id_country_factsheet,'-',input$factsheet_imingInput[2])`"
+output: pdf_document
+resource_files:
+- app.R
+- modules/filter_dataset.R
+- dataset.R
+- dependencies.R
+theme: journal
+prettydoc::html_pretty:
+    theme: leonids
+    highlight: github
+
+
+---
+
+```{r setup, include=FALSE}
+
+
+
+
+```
+
+
+```{css echo=FALSE}
+/* Layout */
+.columns {
+  display: flex;
+}
+.col2 {
+  columns: 2 200px;
+  -webkit-columns: 2 200px;
+  -moz-columns: 2 200px;
+}
+.col3 {
+  columns: 3 100px;
+  -webkit-columns: 3 100px;
+  -moz-columns: 3 100px;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, p {
+  font-family: 'Roboto', sans-serif;
+}
+h1 {
+  color: #1E3A8A; /* deep blue */
+  font-size: 22px;
+  font-weight: 700;
+}
+h1.title {
+  font-size: 22px;
+  color: #0F172A; /* navy */
+}
+h2 {
+  font-size: 18px;
+  color: #1E40AF; /* emerald green */
+  font-weight: 600;
+}
+h3 {
+  font-size: 16px;
+  color: #1E40AF; /* royal blue */
+  font-weight: 500;
+}
+h4 {
+  font-size: 14px;
+  color: #374151; /* neutral gray */
+}
+p {
+  font-size: 13px;
+  color: #111827; /* dark gray */
+}
+.emphasized {
+  font-size: 1.2em;
+  color: #DC2626; /* red accent */
+}
+
+/* Body */
+body {
+  background-color: #FFFFFF;
+  font-family: 'Roboto', sans-serif;
+  color: #333333;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+
+/* Infobox styles */
+.infobox {
+  padding: 1em 1em 1em 4em;
+  margin-bottom: 10px;
+  border: 2px solid #0093D0; /* amber */
+  border-radius: 8px;
+  background: #E6F2FA 5px center/3em no-repeat;
+}
+
+
+.infobox h2 {
+  color: #0093D0; /* WHO blue for headings */
+  font-weight: 600;
+}
+.infobox p {
+  color: #1F4E79;
+}
+
+
+.caution {
+  background-image: url("www/logowho.png");
+}
+
+/* Flag icon */
+.flag-icon {
+  float: right;
+  padding: 10px;
+}
+
+/* Shiny frame */
+.shiny-frame {
+  height: 800px;
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+table th {
+  background-color: #F3F4F6;
+  color: #111827;
+  padding: 8px;
+  border: 1px solid #D1D5DB;
+}
+table td {
+  padding: 8px;
+  border: 1px solid #D1D5DB;
+}
+table tr:hover {
+  background-color: #E5E7EB;
+}
+
+/* Buttons */
+.btn-primary {
+  background-color: #2563EB; /* bright blue */
+  color: #FFFFFF;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+}
+.btn-primary:hover {
+  background-color: #1E40AF; /* darker blue */
+}
+
+
+```
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+# Pull the necessary libraries
+
+library(magrittr)
+library(ggplot2)
+library(dplyr)
+library(labelled)
+library(kableExtra)
+library(tinytex)
+library(webshot)
+library(latexpdf)
+library(latticeExtra)
+library(patchwork)   # pour combiner les graphiques
+library(htmlwidgets) # utile pour highcharter
+
+
+
+```
+
+
+```{r echo=FALSE , warning=FALSE}
+# import data from app.R
+title_name_report_mrkdown_txt<-title_name_report_mrkdown()
+#subtitle_name_report_mrkdown_tx<-subtitle_name_report_mrkdown()
+colors_pals=c("green","#4393C3","#2166AC","#D6604D","darkorange","#B2182B")
+geo_level<-country_name_report_mrkdown()
+
+# Pipeline commun
+# data_all <- tvd_last_r1_factsheet() %>%
+#   select(indicator_code, year_api, numeric_value) %>%
+#   rbind(tvd_first_r1_factsheet() %>% select(indicator_code, year_api, numeric_value)) %>%
+#   group_by(indicator_code, year_api) %>%
+#   summarise(numeric_value = round(mean(numeric_value, na.rm = TRUE), 0), .groups = "drop") %>%
+#   ungroup() %>%
+#   arrange(desc(numeric_value)) %>%
+#   left_join(tvd_indicator %>% select(indicator_code, indicator, category_indicator),
+#             by = c("indicator_code" = "indicator_code"))
+
+
+```
+
+
+
+
+::: {.infobox .caution data-latex="{caution}"}
+
+#  `r title_name_report_mrkdown_txt` 
+
+**Print:**  `r Sys.Date()`
+
+This Epidemiologique situation provides a brief overview of the results of the **TVD program** indicators at the  `r geo_level` . For more details on using _AFRO/DPC/TVD Dashboard_ see <https://tvdindicator.shinyapps.io/tvdforecasting/>.
+
+:::
+
+
+
+## 1- Overview of the data analyzed in this fact sheet
+
+:::::::::::::: {.columns}
+::: {.column width="50%"}
+
+```{r echo=FALSE, warning=FALSE, message=FALSE,fig.show='asis', fig.height=4, fig.width=4}
+
+tmap_mode("plot")
+
+# Vérification avant d'appeler la fonction
+ tryCatch(
+   {fct3_data_map_facsheet(a=tvd_disease_r2_factsheet())
+   }, error = function(e) {
+        # Gestion des erreurs globales
+        showNotification(paste("Error during chart generation :", e$message),
+                         type = "error")
+        return(NULL)  # évite le blocage de l’application
+      })
+
+
+
+# Vérification avant d'appeler la fonction
+#if (!is.null(tvd_disease_r2_factsheet()) && nrow(tvd_disease_r2_factsheet()) > 0) {
+#  fct3_data_map_facsheet(a = tvd_disease_r2_factsheet())
+#} else {
+#  cat("⚠️ Données indisponibles pour générer la carte.\n")
+#}
+   
+
+```
+
+:::
+::: {.column width="50%"}
+
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=5}
+
+
+ tryCatch(
+   {fct2_data_map_facsheet(a=tvd_disease_r2_factsheet())
+   }, error = function(e) {
+        # Gestion des erreurs globales
+        showNotification(paste("Error during chart generation :", e$message),
+                         type = "error")
+        return(NULL)  # évite le blocage de l’application
+      })
+
+ #if (!is.null(tvd_disease_r2_factsheet()) && nrow(tvd_disease_r2_factsheet()) > 0) {
+ # fct2_data_map_facsheet(a = tvd_disease_r2_factsheet())
+#} else {
+#  cat("⚠️ Données indisponibles pour générer le tableau résumé.\n")
+#}
+
+
+
+
+```
+
+:::
+::::::::::::::
+
+
+
+:::::::::::::: {.columns}
+::: {.column width="50%"}
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=5}
+
+
+
+```
+
+:::
+::: {.column width="50%"}
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=5, class.output="bg-success"}
+
+
+
+```
+
+
+:::
+::::::::::::::
+
+\newpage
+
+```{r results = 'asis' , echo=FALSE, warning=FALSE, message=FALSE, warning=FALSE, out.height="90%", out.width="100%"}
+
+
+
+
+```
+\newline
+
+\newpage
+
+## 2- Data Sources
+
+:::::::::::::: {.columns}
+::: {.column width="100%"}
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+
+
+
+```
+
+:::
+::: {.column width="100%"}
+
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=5}
+
+  
+
+```
+
+:::
+::::::::::::::
+
+
+
+
+
+```{r results = 'asis' , echo=FALSE, warning=FALSE, message=FALSE, warning=FALSE, out.height="40%", out.width="80%"}
+
+
+ tryCatch(
+   {fct4_data_map_facsheet(a=tvd_disease_r1_factsheet())
+   }, error = function(e) {
+        # Gestion des erreurs globales
+        showNotification(paste("Error during chart generation :", e$message),
+                         type = "error")
+        return(NULL)  # évite le blocage de l’application
+      })
+
+
+
+     
+
+```
+
+
+:::::: {.cols data-latex=""}
+::: {.col data-latex="{0.5\textwidth}"}
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=5}
+
+
+
+```
+:::
+
+::: {.col data-latex="{0.5\textwidth}"}
+
+:::
+::::::
+
+
+
+
+
+:::::::::::::: {.columns}
+::: {.column width="100%"}
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=5}
+
+
+
+```
+
+:::
+::: {.column width="100%"}
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=5}
+
+
+
+```
+
+
+:::
+::::::::::::::
+
+
+
+\newpage
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, warning=FALSE, out.height="90%", out.width="100%"}
+
+
+
+
+```
+
+\newline
+\newline
+
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, warning=FALSE, out.height="90%", out.width="100%"}
+
+
+
+
+```
+\newline
+
+\newpage
+
+## 3- Trends Related to Morbidity, Mortality and Health service coverage 
+
+
+:::::::::::::: {.columns}
+::: {.column width="50%"}
+
+
+```{r line-chart, fig.width=8, fig.height=6, echo=FALSE}
+
+
+```
+
+:::
+::: {.column width="50%"}
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=5}
+
+
+
+```
+
+
+
+:::
+::::::::::::::
+
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=10, fig.height=12, out.width='100%'}
+
+# Préparation des données regroupées par catégorie
+# Préparation des données avec conditions
+data_heat <- tryCatch({
+  df_last  <- tvd_last_r1_factsheet()
+  df_first <- tvd_first_r1_factsheet()
+  
+  # Vérifie que les deux datasets existent et contiennent les colonnes nécessaires
+  required_cols <- c("indicator_code", "year_api", "numeric_value")
+  if (is.null(df_last) || is.null(df_first) ||
+      !all(required_cols %in% names(df_last)) ||
+      !all(required_cols %in% names(df_first))) {
+    return(NULL)
+  }
+  
+  df_last %>%
+    select(indicator_code, year_api, numeric_value) %>%
+    rbind(df_first %>% select(indicator_code, year_api, numeric_value)) %>%
+    group_by(indicator_code, year_api) %>%
+    summarise(
+      numeric_value = if (all(is.na(numeric_value))) NA_real_ else round(mean(numeric_value, na.rm = TRUE), 0),
+      .groups = "drop"
+    ) %>%
+    ungroup() %>%
+    left_join(
+      tvd_indicator %>% select(indicator_code, indicator, category_indicator),
+      by = "indicator_code"
+    ) %>%
+    filter(category_indicator %in% c("Prevalence","Incidence","Death","Strategy")) %>%
+    arrange(category_indicator, indicator, year_api)
+}, error = function(e) {
+  showNotification(paste("⚠️ Erreur lors de la préparation des données :", e$message), type = "error")
+  NULL
+})
+
+# Création de la heatmap avec palette vert → jaune → rouge
+if (!is.null(data_heat) && nrow(data_heat) > 0) {
+  hchart(
+    data_heat,
+    "heatmap",
+    hcaes(
+      x = year_api,
+      y = paste(category_indicator, indicator, sep = " - "),
+      value = numeric_value
+    )
+  ) %>%
+    hc_title(text = paste(geo_level, ": Heatmap des indicateurs par catégorie")) %>%
+    hc_subtitle(text = "Comparaison par année et indicateur") %>%
+    hc_xAxis(title = list(text = "Année")) %>%
+    hc_yAxis(
+      title = list(text = "Catégorie - Indicateur"),
+      categories = unique(paste(data_heat$category_indicator, data_heat$indicator, sep = " - "))
+    ) %>%
+    hc_colorAxis(stops = color_stops(colors = c("green","yellow","orange","red"))) %>%
+    hc_tooltip(pointFormat = "Valeur: <b>{point.value}</b>") %>%
+    hc_plotOptions(series = list(
+      dataLabels = list(
+        enabled = TRUE,
+        format = "{point.value}",
+        color = "black"
+      )
+    )) %>%
+    hc_add_theme(hc_theme_smpl()) %>%
+    hc_chart(backgroundColor = "transparent") %>%
+    hc_exporting(enabled = TRUE)
+} else {
+  p("⚠️ Aucune donnée trouvée pour ces catégories. Vérifie l'orthographe des noms ou la disponibilité des données.")
+}
+
+
+
+```
+
+
+```{r  echo=FALSE, warning=FALSE, message=FALSE, warning=FALSE, out.height="90%", out.width="100%"}
+# df <- data2_perf_indi_prevalence()
+
+# Colonnes attendues
+# Vérifie que l'objet existe
+# if (is.null(df)) {
+#   p("⚠️ Les données sont absentes.")
+# } else if (nrow(df) == 0) {
+#   p("⚠️ Le dataset est vide.")
+# } else if (!all(required_cols %in% names(df))) {
+#  missing <- setdiff(required_cols, names(df))
+#  p(paste("⚠️ Colonnes manquantes :", paste(missing, collapse = ", ")))
+#} else {
+  # Toutes les conditions sont OK → exécuter le graphique
+ #  hchart(
+ #    df,
+#     "column",
+#     hcaes(country, value, group = group_value),
+#     dataLabels = list(enabled = TRUE, format = '{point.performance:.1f}')
+#   ) %>%
+ #    hc_colors(colors_pal) %>%
+#     hc_xAxis(title = list(text = "")) %>%
+#     hc_yAxis(title = list(text = "")) %>%
+#     hc_exporting(enabled = TRUE) %>%
+#     hc_tooltip(
+#       crosshairs = TRUE,
+#       backgroundColor = "#FCFFC5",
+#       shared = TRUE,
+#       borderWidth = 2
+#     ) %>%
+ #    hc_title(
+ #      text = paste(
+ #        "Number of indicators that recorded a reduction in frequency between",
+ #        if (all(is.na(tvd_first_r1_factsheet()$year_api))) NA else # # min(tvd_first_r1_factsheet()$year_api, na.rm = TRUE),
+#        " and ",
+#        if (all(is.na(tvd_last_r1_factsheet()$year_api))) NA else max(tvd_last_r1_factsheet()$year_api, na.rm = TRUE),
+ #       "-",
+ #       country_name_report_mrkdown()
+ #     ),
+ #     align = "center"
+ #   ) %>%
+ #   hc_subtitle(text = "", align = "center") %>%
+ #   hc_add_theme(hc_theme_smpl()) %>%
+ #   hc_credits(
+ #     enabled = TRUE,
+ #     text = "Data Source: WHO/AFRO/DPC/TVD Programme",
+ #     style = list(fontSize = "10px")
+ #   )
+#}
+
+
+```
+
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=5, out.width='100%'}
+
+
+
+ tryCatch(
+   {fct3b_group_facsheet(a=tvd_factsheet_r())
+   }, error = function(e) {
+        # Gestion des erreurs globales
+        showNotification(paste("Error during chart generation :", e$message),
+                         type = "error")
+        return(NULL)  # évite le blocage de l’application
+      })
+
+#fct2b_group_facsheet(a=tvd_first_Last_factsheet())
+ 
+# fct_progress_view(a=tvd_first_Last_factsheet(),
+#                          b=paste("Indicator Results for" #,unique(tvd_first_Last_factsheet()$Dimension) ," and Value Differences Between Current Estimates #and Baseline "," in the period from ",min(tvd_first_Last_factsheet()$year_api)," to", #max(tvd_first_Last_factsheet()$year_api)," - ","AFRO"), 
+#                          c="Note Green indicates positive progress toward targets compared with #baseline values, while brown indicates negative progress toward targets compared with baseline #values.")%>%
+#          htmltools_value()
+  
+  
+
+
+
+```
+
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, facettes, fig.width=10, fig.height=8, out.width='100%'}
+
+
+
+# Exemple de données
+#data <- data.frame(
+#  categorie = rep(c("Prévalence", "Incidence", "Death", "Stratégie"), each = 10),
+#  valeur = runif(40, 1, 100),
+#  temps = rep(1:10, 4)
+#)
+
+# Graphique avec facettes
+#ggplot(data, aes(x = temps, y = valeur, color = categorie)) +
+#  geom_line(show.legend = FALSE) +
+#  facet_wrap(~categorie, ncol = 2) +
+#  ggtitle("Indicateurs par catégorie") +
+#  theme_minimal()
+
+
+
+```
+
+
+:::::::::::::: {.columns}
+::: {.column width="50%"}
+
+
+:::
+::: {.column width="50%"}
+
+
+
+:::
+::::::::::::::
+
+
+
+\newpage
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, warning=FALSE, out.height="90%", out.width="100%"}
+
+
+
+
+```
+
+
+
+
+
+:::::::::::::: {.columns}
+::: {.column width="50%"}
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE,fig.show='asis', fig.height=4, fig.width=4}
+
+
+
+
+```
+
+:::
+::: {.column width="50%"}
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=5}
+
+     
+
+```
+
+
+
+:::
+::::::::::::::
+
+
+
+
+
+
+```{r results = 'asis' , echo=FALSE, warning=FALSE, message=FALSE, warning=FALSE, out.height="40%", out.width="50%"}
+
+
+
+      
+
+```
+
+
+
+
+
+:::::::::::::: {.columns}
+::: {.column width="50%"}
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=5}
+
+
+
+```
+
+:::
+::: {.column width="50%"}
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=5}
+
+
+
+```
+
+
+:::
+::::::::::::::
+
+
+
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=5}
+
+
+
+```
+
+
+
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, warning=FALSE, out.height="90%", out.width="100%"}
+
+
+
+
+```
+
+
+\newline
+\newline
+
+\newpage
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, warning=FALSE, out.height="90%", out.width="100%"}
+
+
+
+
+```
+
+
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+#tmap_arrange(tmap_sdg_indicators,tmap_sdg_indicators_africa,nrow = 1)
+```
+\newline
+
+\newpage
+
+
+
+
+\newline
+
+\newpage
+
+### 3- Forecast Relative to Targets
+
+
+\newline
+
+\newpage
+
+
+
+
+\newline
+
+\newpage
+
+
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
